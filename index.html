@@ -32,6 +32,9 @@ a{color:var(--ac)}
 .badge{font-size:12px;color:var(--mut)}
 .body p{margin:10px 0;overflow-wrap:anywhere}
 .body ul{padding-left:22px}
+.body h1,.body h3{font-size:17px;margin:18px 0 8px}
+.body table{border-collapse:collapse;display:block;overflow-x:auto;margin:10px 0}
+.body td,.body th{border:1px solid var(--bd);padding:6px 10px}
 .body img{max-width:100%;max-height:360px;border-radius:10px;border:1px solid var(--bd);cursor:pointer;display:block;margin:10px 0}
 .body code{background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:1px 5px}
 .help{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:10px 0}
@@ -47,7 +50,7 @@ a{color:var(--ac)}
 var host=location.hostname,seg=location.pathname.split('/')[1]||'';
 var OWNER=/\.github\.io$/.test(host)?host.split('.')[0]:'e696vo-alt';
 var REPO=(/\.github\.io$/.test(host)&&seg)?seg:'instrukcii';
-var DIR='instructions/',KEY='instr_files_v1';
+var DIR='instructions/',KEY='instr_files_v2';
 var app=document.getElementById('app'),items=[],q='',cat='Все',cur=null,state='loading';
 
 function h(tag,attrs,kids){var e=document.createElement(tag);for(var k in (attrs||{})){if(k==='on'){for(var ev in attrs.on)e.addEventListener(ev,attrs.on[ev])}else if(k==='text')e.textContent=attrs[k];else if(k==='html')e.innerHTML=attrs[k];else e.setAttribute(k,attrs[k])}(kids||[]).forEach(function(c){if(c)e.appendChild(c)});return e}
@@ -98,13 +101,63 @@ function parse(txt,path){
   return {path:path,title:title||name,equip:equip||'Прочее',warn:warn,html:r.html,steps:r.steps,search:(title+' '+equip+' '+plain).toLowerCase()};
 }
 
+
+/* --- Word (.docx) --- */
+var mmP=null;
+function ensureMammoth(){
+  if(window.mammoth)return Promise.resolve();
+  if(mmP)return mmP;
+  function add(u){return new Promise(function(ok,no){var sc=document.createElement('script');sc.src=u;sc.onload=ok;sc.onerror=no;document.head.appendChild(sc)})}
+  mmP=add('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js').catch(function(){return add('https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js')});
+  return mmP;
+}
+function clean(root){
+  root.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach(function(e){e.remove()});
+  root.querySelectorAll('*').forEach(function(e){
+    Array.from(e.attributes).forEach(function(a){
+      var n=a.name.toLowerCase(),v=a.value.trim().toLowerCase();
+      if(n.indexOf('on')===0||n==='style'||n==='class')e.removeAttribute(a.name);
+      else if(n==='href'&&!/^(https?:|mailto:|#)/.test(v))e.removeAttribute(a.name);
+      else if(n==='src'&&!/^(data:image\/|https?:)/.test(v))e.removeAttribute(a.name);
+    });
+    if(e.tagName==='A'){e.setAttribute('target','_blank');e.setAttribute('rel','noopener')}
+  });
+}
+async function parseDocx(buf,path){
+  await ensureMammoth();
+  var r=await mammoth.convertToHtml({arrayBuffer:buf});
+  var doc=new DOMParser().parseFromString('<body>'+r.value+'</body>','text/html');
+  var root=doc.body;clean(root);
+  var name=path.replace(/^.*\//,'').replace(/\.docx$/i,'');
+  var title='',equip='',warn='',m;
+  Array.from(root.children).forEach(function(p){
+    if(p.tagName!=='P')return;
+    var t=p.textContent.trim();
+    if(m=t.match(/^(оборудование)\s*:\s*(.*)/i)){if(!equip)equip=m[2].trim();p.remove()}
+    else if(m=t.match(/^(внимание|предупреждение)\s*:\s*(.*)/i)){if(!warn)warn=m[2].trim();p.remove()}
+  });
+  var kids=Array.from(root.children).filter(function(e){return e.textContent.trim()||e.querySelector('img')});
+  var f=kids[0];
+  if(f&&(/^H[1-6]$/.test(f.tagName)||(f.tagName==='P'&&f.textContent.trim().length<=100&&!/^\d+[.)]\s/.test(f.textContent.trim())&&!f.querySelector('img')))){title=f.textContent.trim();f.remove()}
+  var n=0,out=doc.createElement('div');
+  function step(html){n++;var s=doc.createElement('div');s.className='step';var nm=doc.createElement('div');nm.className='num';nm.textContent=n;var c=doc.createElement('div');c.innerHTML=html;s.appendChild(nm);s.appendChild(c);out.appendChild(s)}
+  Array.from(root.children).forEach(function(e){
+    if(e.tagName==='OL'){Array.from(e.children).forEach(function(li){if(li.tagName==='LI')step(li.innerHTML)})}
+    else if(e.tagName==='P'&&/^\d+[.)]\s+/.test(e.textContent.trim())){step(e.innerHTML.replace(/^\s*\d+[.)]\s+/,''))}
+    else if(e.tagName==='P'&&!e.textContent.trim()&&!e.querySelector('img')){}
+    else out.appendChild(e);
+  });
+  var plain=out.textContent;
+  return {path:path,title:title||name,equip:equip||'Прочее',warn:warn,html:out.innerHTML,steps:n,search:(title+' '+equip+' '+plain).toLowerCase()};
+}
+
 /* --- загрузка списка файлов из GitHub --- */
 async function listFiles(){
   try{
     var r=await fetch('https://api.github.com/repos/'+OWNER+'/'+REPO+'/git/trees/HEAD?recursive=1');
     if(!r.ok)throw new Error(r.status);
     var j=await r.json();
-    var f=j.tree.filter(function(x){return x.type==='blob'&&/^instructions\/[^\/]+\.md$/i.test(x.path)&&!/^(_|readme)/i.test(x.path.slice(DIR.length))}).map(function(x){return x.path});
+    var f=j.tree.filter(function(x){return x.type==='blob'&&/^instructions\/[^\/]+\.(md|docx)$/i.test(x.path)&&!/^(_|~|readme)/i.test(x.path.slice(DIR.length))}).map(function(x){return x.path});
     try{localStorage.setItem(KEY,JSON.stringify(f))}catch(e){}
     return f;
   }catch(e){
@@ -115,7 +168,9 @@ async function load(){
   state='loading';route();
   var files=await listFiles();
   if(!files){state='error';route();return}
-  var res=await Promise.all(files.map(function(p){return fetch(enc(p),{cache:'no-cache'}).then(function(r){return r.ok?r.text():''}).then(function(t){return t?parse(t,p):null}).catch(function(){return null})}));
+  var res=await Promise.all(files.map(function(p){
+    var isDocx=/\.docx$/i.test(p);
+    return fetch(enc(p),{cache:'no-cache'}).then(function(r){if(!r.ok)throw 0;return isDocx?r.arrayBuffer():r.text()}).then(function(t){return isDocx?parseDocx(t,p):parse(t,p)}).catch(function(){return null})}));
   items=res.filter(Boolean);
   state='ok';
   route();
@@ -158,8 +213,8 @@ function help(){
   app.innerHTML='';
   app.appendChild(h('button',{class:'g',text:'← К инструкциям',on:{click:function(){location.hash='';}}}));
   app.appendChild(h('h1',{text:'Как добавить инструкцию',style:'margin-top:14px'}));
-  app.appendChild(h('div',{class:'help',html:'1. Напишите текст в Блокноте и сохраните как <code>название.md</code> (кодировка UTF-8).<br>2. Откройте <a target="_blank" rel="noopener" href="https://github.com/'+OWNER+'/'+REPO+'/upload/main/instructions">страницу загрузки</a>, перетащите файл (и фото), нажмите <b>Commit changes</b>.<br>3. Через 1–2 минуты инструкция появится здесь.'}));
-  app.appendChild(h('div',{class:'help'},[h('b',{text:'Как оформить текст'}),h('pre',{text:'# Название проблемы\nОборудование: Принтер этикеток\nВнимание: Выключите питание\n\nОписание обычным текстом.\n\n1. Первый шаг\n2. Второй шаг\n\n![](фото.jpg)'})]));
+  app.appendChild(h('div',{class:'help',html:'1. Напишите инструкцию в Word (сохраните как <code>.docx</code>) или в Блокноте (<code>.md</code>, UTF-8).<br>2. Откройте <a target="_blank" rel="noopener" href="https://github.com/'+OWNER+'/'+REPO+'/upload/main/instructions">страницу загрузки</a>, перетащите файл (и фото), нажмите <b>Commit changes</b>.<br>3. Через 1–2 минуты инструкция появится здесь.'}));
+  app.appendChild(h('div',{class:'help'},[h('b',{text:'Как оформить текст'}),h('pre',{text:'В Word и в Блокноте одинаково:\nПервая строка — название\nОборудование: Принтер этикеток\nВнимание: Выключите питание\nДальше текст, нумерованный список, фото.\n\nВ Блокноте (.md) название пишут так:\n# Название проблемы\nОборудование: Принтер этикеток\nВнимание: Выключите питание\n\nОписание обычным текстом.\n\n1. Первый шаг\n2. Второй шаг\n\n![](фото.jpg)'})]));
 }
 function route(){if(location.hash==='#admin')help();else list()}
 window.addEventListener('hashchange',route);
