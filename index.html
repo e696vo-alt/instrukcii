@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="ru"><head>
+<html lang="ru">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Инструкции по оборудованию</title>
@@ -30,6 +31,7 @@ button.d{background:var(--rd);color:#fff}
 .row{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
 .empty{text-align:center;color:var(--mut);padding:30px 0}
 .badge{font-size:12px;color:var(--mut)}
+.desc{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:10px 0}
 .ph{display:flex;gap:8px;overflow-x:auto;margin:10px 0}
 .ph img{height:160px;border-radius:10px;border:1px solid var(--bd);cursor:pointer;display:block}
 .thumb{position:relative;flex:none}
@@ -40,7 +42,7 @@ button.d{background:var(--rd);color:#fff}
 </head>
 <body>
 <div class="wrap" id="app"></div>
-<script id="data" type="application/json">{"items":[]}</script>
+<script id="data" type="application/json">{"items":[{"id":"s1","equip":"Принтер этикеток","title":"Не печатает этикетки","warn":"Перед вскрытием крышки выключите принтер.","steps":["Проверьте, что принтер включён и горит зелёный индикатор.","Откройте крышку и убедитесь, что рулон вставлен правильно.","Нажмите кнопку «Подача» — должна выйти одна этикетка.","Если не помогло — выключите принтер на 10 секунд и включите снова.","Всё ещё не печатает — позвоните старшему смены."],"upd":"2026-10-24"},{"id":"s2","equip":"Упаковочный станок","title":"Аварийная остановка (красный индикатор)","warn":"Не засовывайте руки в зону ножа.","steps":["Нажмите кнопку «Стоп» и дождитесь полной остановки.","Осмотрите зону подачи — уберите застрявшую плёнку.","Поверните аварийную кнопку по часовой стрелке для сброса.","Нажмите «Пуск» и проверьте первую упаковку."],"upd":"2026-10-24"}]}</script>
 <script>
 (function(){
 var data;try{data=JSON.parse(document.getElementById('data').textContent)}catch(e){data={items:[]}}
@@ -77,9 +79,9 @@ function list(){
 function renderCards(){
   var box=document.getElementById('cards');box.innerHTML='';
   var qq=q.trim().toLowerCase();
-  var r=data.items.filter(function(i){return (cat==='Все'||i.equip===cat)&&(!qq||(i.title+' '+i.equip+' '+i.steps.join(' ')).toLowerCase().indexOf(qq)>-1)});
+  var r=data.items.filter(function(i){return (cat==='Все'||i.equip===cat)&&(!qq||(i.title+' '+i.equip+' '+i.steps.join(' ')+' '+(i.desc||'')).toLowerCase().indexOf(qq)>-1)});
   if(!r.length){box.appendChild(h('div',{class:'empty',text:data.items.length?'Ничего не найдено':'Инструкций пока нет'}));return}
-  r.forEach(function(i){box.appendChild(h('div',{class:'card',on:{click:function(){cur=i;show()}}},[h('div',{class:'eq',text:i.equip}),h('b',{text:i.title}),h('span',{class:'badge',text:i.steps.length+' шагов'+(i.photos&&i.photos.length?' · 📷 '+i.photos.length:'')})]))});
+  r.forEach(function(i){box.appendChild(h('div',{class:'card',on:{click:function(){cur=i;show()}}},[h('div',{class:'eq',text:i.equip}),h('b',{text:i.title}),h('span',{class:'badge',text:(i.steps.length?i.steps.length+' шагов':'описание')+(i.photos&&i.photos.length?' · 📷 '+i.photos.length:'')})]))});
 }
 function show(){
   app.innerHTML='';
@@ -88,6 +90,7 @@ function show(){
   app.appendChild(h('h1',{text:cur.title}));
   if(cur.warn)app.appendChild(h('div',{class:'warn',text:'⚠️ '+cur.warn}));
   if(cur.photos&&cur.photos.length){var ph=h('div',{class:'ph'});cur.photos.forEach(function(p){ph.appendChild(h('img',{src:p,on:{click:function(){big(p)}}}))});app.appendChild(ph)}
+  if(cur.desc)app.appendChild(h('div',{class:'desc',text:cur.desc}));
   cur.steps.forEach(function(s,n){app.appendChild(h('div',{class:'step'},[h('div',{class:'num',text:String(n+1)}),h('div',{text:s})]))});
   if(canEdit)app.appendChild(h('div',{class:'row'},[h('button',{class:'g',text:'Изменить',on:{click:function(){edit(cur)}}}),h('button',{class:'d',text:'Удалить',on:{click:async function(){if(!confirm('Удалить инструкцию?'))return;data.items=data.items.filter(function(x){return x!==cur});await persist()}}})]));
 }
@@ -98,8 +101,9 @@ function edit(it){
   var f1=h('input',{list:'eqs',placeholder:'Например: Принтер этикеток',value:it?it.equip:''});
   var f2=h('input',{placeholder:'Например: Не печатает',value:it?it.title:''});
   var f3=h('textarea',{placeholder:'Каждый шаг с новой строки'});f3.value=it?it.steps.join('\n'):'';
+  var f5=h('textarea',{placeholder:'Вставьте сюда любой текст: описание, причины, пояснения',style:'min-height:260px'});f5.value=it?it.desc||'':'';
   var f4=h('input',{placeholder:'Необязательно: техника безопасности',value:it?it.warn||'':''});
-  [['Оборудование',f1],['Проблема',f2],['Шаги (каждый с новой строки)',f3],['Предупреждение',f4]].forEach(function(p){app.appendChild(h('label',{text:p[0]}));app.appendChild(p[1])});
+  [['Оборудование',f1],['Проблема',f2],['Описание (большой текст)',f5],['Шаги по пунктам (необязательно, каждый с новой строки)',f3],['Предупреждение',f4]].forEach(function(p){app.appendChild(h('label',{text:p[0]}));app.appendChild(p[1])});
   app.appendChild(dl);
   var photos=it&&it.photos?it.photos.slice():[];
   var prev=h('div',{class:'ph'});
@@ -111,8 +115,8 @@ function edit(it){
   app.appendChild(h('div',{class:'row'},[
     h('button',{text:'Сохранить (скачать файл)',on:{click:async function(){
       var steps=f3.value.split('\n').map(function(s){return s.trim()}).filter(Boolean);
-      if(!f1.value.trim()||!f2.value.trim()||!steps.length){alert('Заполните оборудование, проблему и хотя бы один шаг');return}
-      var o={id:it?it.id:'i'+Date.now(),equip:f1.value.trim(),title:f2.value.trim(),warn:f4.value.trim(),steps:steps,photos:photos,upd:new Date().toISOString().slice(0,10)};
+      if(!f1.value.trim()||!f2.value.trim()||(!steps.length&&!f5.value.trim())){alert('Заполните оборудование, проблему и описание или шаги');return}
+      var o={id:it?it.id:'i'+Date.now(),equip:f1.value.trim(),title:f2.value.trim(),warn:f4.value.trim(),desc:f5.value.trim(),steps:steps,photos:photos,upd:new Date().toISOString().slice(0,10)};
       if(it)data.items[data.items.indexOf(it)]=o;else data.items.push(o);
       await persist();
     }}}),
@@ -123,6 +127,5 @@ canEdit=location.hash==='#admin';list();
 window.addEventListener('hashchange',function(){canEdit=location.hash==='#admin';list()});
 })();
 </script>
-
-
-</body></html>
+</body>
+</html>
