@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
-<head>
+<html lang="ru"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Инструкции по оборудованию</title>
@@ -41,7 +40,7 @@ button.d{background:var(--rd);color:#fff}
 </head>
 <body>
 <div class="wrap" id="app"></div>
-<script id="data" type="application/json">{"items":[{"id":"s1","equip":"Принтер этикеток","title":"Не печатает этикетки","warn":"Перед вскрытием крышки выключите принтер.","steps":["Проверьте, что принтер включён и горит зелёный индикатор.","Откройте крышку и убедитесь, что рулон вставлен правильно.","Нажмите кнопку «Подача» — должна выйти одна этикетка.","Если не помогло — выключите принтер на 10 секунд и включите снова.","Всё ещё не печатает — позвоните старшему смены."],"upd":"2026-10-24"},{"id":"s2","equip":"Упаковочный станок","title":"Аварийная остановка (красный индикатор)","warn":"Не засовывайте руки в зону ножа.","steps":["Нажмите кнопку «Стоп» и дождитесь полной остановки.","Осмотрите зону подачи — уберите застрявшую плёнку.","Поверните аварийную кнопку по часовой стрелке для сброса.","Нажмите «Пуск» и проверьте первую упаковку."],"upd":"2026-10-24"}]}</script>
+<script id="data" type="application/json">{"items":[{"id":"s2","equip":"Упаковочный станок","title":"Аварийная остановка (красный индикатор)","warn":"Не засовывайте руки в зону ножа.","steps":["Нажмите кнопку «Стоп» и дождитесь полной остановки.","Осмотрите зону подачи — уберите застрявшую плёнку.","Поверните аварийную кнопку по часовой стрелке для сброса.","Нажмите «Пуск» и проверьте первую упаковку."],"upd":"2026-10-24"}]}</script>
 <script>
 (function(){
 var data;try{data=JSON.parse(document.getElementById('data').textContent)}catch(e){data={items:[]}}
@@ -124,5 +123,6 @@ canEdit=location.hash==='#admin';list();
 window.addEventListener('hashchange',function(){canEdit=location.hash==='#admin';list()});
 })();
 </script>
-</body>
-</html>
+
+
+</body></html>
