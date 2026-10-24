@@ -12,13 +12,12 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif}
 .wrap{max-width:720px;margin:0 auto;padding:14px}
-h1{font-size:20px;margin:4px 0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
-input,textarea,select{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);font:inherit}
-textarea{min-height:130px}
-label{display:block;margin:12px 0 4px;font-size:14px;color:var(--mut)}
+h1{font-size:20px;margin:4px 0 12px}
+h2{font-size:17px;margin:18px 0 8px}
+input{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);font:inherit}
 button{font:inherit;border:0;border-radius:10px;padding:12px 16px;background:var(--ac);color:var(--acx);cursor:pointer}
 button.g{background:var(--card);color:var(--tx);border:1px solid var(--bd)}
-button.d{background:var(--rd);color:#fff}
+a{color:var(--ac)}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0}
 .chip{flex:none;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--bd);color:var(--tx)}
 .chip.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
@@ -26,49 +25,109 @@ button.d{background:var(--rd);color:#fff}
 .card b{display:block;font-size:17px}
 .eq{color:var(--mut);font-size:14px}
 .step{display:flex;gap:12px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:8px 0}
+.step>div:last-child{min-width:0;overflow-wrap:anywhere}
 .num{flex:none;width:28px;height:28px;border-radius:50%;background:var(--ac);color:var(--acx);display:flex;align-items:center;justify-content:center;font-weight:700}
 .warn{background:var(--wr);color:var(--wrt);border-radius:12px;padding:12px;margin:10px 0}
-.row{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
 .empty{text-align:center;color:var(--mut);padding:30px 0}
 .badge{font-size:12px;color:var(--mut)}
-.desc{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:10px 0}
-.ph{display:flex;gap:8px;overflow-x:auto;margin:10px 0}
-.ph img{height:160px;border-radius:10px;border:1px solid var(--bd);cursor:pointer;display:block}
-.thumb{position:relative;flex:none}
-.thumb button{position:absolute;top:4px;right:4px;padding:2px 9px;border-radius:999px}
+.body p{margin:10px 0;overflow-wrap:anywhere}
+.body ul{padding-left:22px}
+.body img{max-width:100%;max-height:360px;border-radius:10px;border:1px solid var(--bd);cursor:pointer;display:block;margin:10px 0}
+.body code{background:var(--card);border:1px solid var(--bd);border-radius:6px;padding:1px 5px}
+.help{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:10px 0}
+.help pre{white-space:pre-wrap;margin:8px 0 0;font:14px/1.4 ui-monospace,Consolas,monospace}
 .big{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;z-index:50;padding:8px}
 .big img{max-width:100%;max-height:100%}
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
-<script id="data" type="application/json">{"items":[{"id":"s1","equip":"Принтер этикеток","title":"Не печатает этикетки","warn":"Перед вскрытием крышки выключите принтер.","steps":["Проверьте, что принтер включён и горит зелёный индикатор.","Откройте крышку и убедитесь, что рулон вставлен правильно.","Нажмите кнопку «Подача» — должна выйти одна этикетка.","Если не помогло — выключите принтер на 10 секунд и включите снова.","Всё ещё не печатает — позвоните старшему смены."],"upd":"2026-10-24"},{"id":"s2","equip":"Упаковочный станок","title":"Аварийная остановка (красный индикатор)","warn":"Не засовывайте руки в зону ножа.","steps":["Нажмите кнопку «Стоп» и дождитесь полной остановки.","Осмотрите зону подачи — уберите застрявшую плёнку.","Поверните аварийную кнопку по часовой стрелке для сброса.","Нажмите «Пуск» и проверьте первую упаковку."],"upd":"2026-10-24"}]}</script>
 <script>
 (function(){
-var data;try{data=JSON.parse(document.getElementById('data').textContent)}catch(e){data={items:[]}}
-var app=document.getElementById('app'),canEdit=false,art=null,q='',cat='Все',view='list',cur=null,saving=false;
+var host=location.hostname,seg=location.pathname.split('/')[1]||'';
+var OWNER=/\.github\.io$/.test(host)?host.split('.')[0]:'e696vo-alt';
+var REPO=(/\.github\.io$/.test(host)&&seg)?seg:'instrukcii';
+var DIR='instructions/',KEY='instr_files_v1';
+var app=document.getElementById('app'),items=[],q='',cat='Все',cur=null,state='loading';
 
-function h(tag,attrs,kids){var e=document.createElement(tag);for(var k in (attrs||{})){if(k==='on'){for(var ev in attrs.on)e.addEventListener(ev,attrs.on[ev])}else if(k==='text')e.textContent=attrs[k];else e.setAttribute(k,attrs[k])}(kids||[]).forEach(function(c){if(c)e.appendChild(c)});return e}
-function cats(){var s={};data.items.forEach(function(i){s[i.equip]=1});return ['Все'].concat(Object.keys(s).sort())}
-
-async function persist(){
-  var c=document.documentElement.cloneNode(true);
-  c.querySelector('#app').innerHTML='';
-  var o=c.querySelector('.big');if(o)o.remove();
-  c.querySelector('#data').textContent=JSON.stringify(data).replace(/</g,'\\u003c');
-  var html='<!DOCTYPE html>\n'+c.outerHTML;
-  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download='index.html';document.body.appendChild(a);a.click();a.remove();
-  setTimeout(function(){URL.revokeObjectURL(a.href)},5000);
-  alert('Файл index.html скачан. Загрузите его на GitHub вместо старого — тогда операторы увидят изменения.');
-  list();return true;
-}
-function shrink(file){return new Promise(function(res,rej){var r=new FileReader();r.onerror=rej;r.onload=function(){var im=new Image();im.onerror=rej;im.onload=function(){var s=Math.min(1,1000/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.7))};im.src=r.result};r.readAsDataURL(file)})}
+function h(tag,attrs,kids){var e=document.createElement(tag);for(var k in (attrs||{})){if(k==='on'){for(var ev in attrs.on)e.addEventListener(ev,attrs.on[ev])}else if(k==='text')e.textContent=attrs[k];else if(k==='html')e.innerHTML=attrs[k];else e.setAttribute(k,attrs[k])}(kids||[]).forEach(function(c){if(c)e.appendChild(c)});return e}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function enc(p){return p.split('/').map(encodeURIComponent).join('/')}
 function big(src){var o=h('div',{class:'big',on:{click:function(){o.remove()}}},[h('img',{src:src})]);document.body.appendChild(o)}
+
+/* --- мини-разбор markdown --- */
+function inline(s){
+  s=esc(s);
+  s=s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g,function(m,a,u){
+    var src=/^https?:\/\//i.test(u)?u:DIR+encodeURI(decodeURI(u).replace(/^\.?\//,''));
+    return '<img src="'+src+'" alt="'+a+'">'});
+  s=s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s=s.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*)\*/g,'$1<i>$2</i>').replace(/`([^`]+)`/g,'<code>$1</code>');
+  return s;
+}
+function renderBody(lines){
+  var out='',para=[],ul=[],n=0;
+  function fp(){if(para.length){out+='<p>'+para.map(inline).join('<br>')+'</p>';para=[]}}
+  function fu(){if(ul.length){out+='<ul>'+ul.map(function(x){return '<li>'+inline(x)+'</li>'}).join('')+'</ul>';ul=[]}}
+  lines.forEach(function(raw){
+    var l=raw.trim(),m;
+    if(!l){fp();fu();return}
+    if(m=l.match(/^#{1,6}\s+(.*)/)){fp();fu();out+='<h2>'+inline(m[1])+'</h2>';return}
+    if(m=l.match(/^\d+[.)]\s+(.*)/)){fp();fu();n++;out+='<div class="step"><div class="num">'+n+'</div><div>'+inline(m[1])+'</div></div>';return}
+    if(m=l.match(/^[-*•]\s+(.*)/)){fp();ul.push(m[1]);return}
+    if(m=l.match(/^>\s?(.*)/)){fp();fu();var t=m[1].replace(/^\[!\w+\]\s*/,'');if(t)out+='<div class="warn">⚠️ '+inline(t)+'</div>';return}
+    fu();para.push(l);
+  });
+  fp();fu();
+  return {html:out,steps:n};
+}
+function parse(txt,path){
+  var lines=txt.replace(/^\uFEFF/,'').replace(/\r/g,'').split('\n');
+  var name=path.replace(/^.*\//,'').replace(/\.md$/i,'');
+  var title='',equip='',warn='',i=0,m;
+  for(;i<lines.length;i++){
+    var l=lines[i].trim();
+    if(!l)continue;
+    if(!title&&(m=l.match(/^#\s+(.*)/))){title=m[1];continue}
+    if(m=l.match(/^(оборудование)\s*:\s*(.*)/i)){equip=m[2].trim();continue}
+    if(m=l.match(/^(внимание|предупреждение)\s*:\s*(.*)/i)){warn=m[2].trim();continue}
+    break;
+  }
+  var r=renderBody(lines.slice(i));
+  var plain=lines.join(' ').toLowerCase();
+  return {path:path,title:title||name,equip:equip||'Прочее',warn:warn,html:r.html,steps:r.steps,search:(title+' '+equip+' '+plain).toLowerCase()};
+}
+
+/* --- загрузка списка файлов из GitHub --- */
+async function listFiles(){
+  try{
+    var r=await fetch('https://api.github.com/repos/'+OWNER+'/'+REPO+'/git/trees/HEAD?recursive=1');
+    if(!r.ok)throw new Error(r.status);
+    var j=await r.json();
+    var f=j.tree.filter(function(x){return x.type==='blob'&&/^instructions\/[^\/]+\.md$/i.test(x.path)&&!/^(_|readme)/i.test(x.path.slice(DIR.length))}).map(function(x){return x.path});
+    try{localStorage.setItem(KEY,JSON.stringify(f))}catch(e){}
+    return f;
+  }catch(e){
+    try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(_){return null}
+  }
+}
+async function load(){
+  state='loading';route();
+  var files=await listFiles();
+  if(!files){state='error';route();return}
+  var res=await Promise.all(files.map(function(p){return fetch(enc(p),{cache:'no-cache'}).then(function(r){return r.ok?r.text():''}).then(function(t){return t?parse(t,p):null}).catch(function(){return null})}));
+  items=res.filter(Boolean);
+  state='ok';
+  route();
+}
+
+/* --- экраны --- */
+function cats(){var s={};items.forEach(function(i){s[i.equip]=1});return ['Все'].concat(Object.keys(s).sort())}
 function list(){
   app.innerHTML='';
-  var t=h('h1',{},[h('span',{text:'🔧 Инструкции'})]);
-  if(canEdit)t.appendChild(h('button',{text:'+ Добавить',on:{click:function(){edit(null)}}}));
-  app.appendChild(t);
+  app.appendChild(h('h1',{text:'🔧 Инструкции'}));
+  if(state==='loading'){app.appendChild(h('div',{class:'empty',text:'Загрузка…'}));return}
+  if(state==='error'){app.appendChild(h('div',{class:'empty',text:'Не удалось загрузить список инструкций. Проверьте интернет и обновите страницу.'}));return}
   app.appendChild(h('input',{type:'search',placeholder:'Поиск: оборудование или проблема',value:q,on:{input:function(e){q=e.target.value;renderCards()}}}));
   var chips=h('div',{class:'chips'});
   cats().forEach(function(c){chips.appendChild(h('button',{class:'chip'+(c===cat?' on':''),text:c,on:{click:function(){cat=c;list()}}}))});
@@ -79,9 +138,10 @@ function list(){
 function renderCards(){
   var box=document.getElementById('cards');box.innerHTML='';
   var qq=q.trim().toLowerCase();
-  var r=data.items.filter(function(i){return (cat==='Все'||i.equip===cat)&&(!qq||(i.title+' '+i.equip+' '+i.steps.join(' ')+' '+(i.desc||'')).toLowerCase().indexOf(qq)>-1)});
-  if(!r.length){box.appendChild(h('div',{class:'empty',text:data.items.length?'Ничего не найдено':'Инструкций пока нет'}));return}
-  r.forEach(function(i){box.appendChild(h('div',{class:'card',on:{click:function(){cur=i;show()}}},[h('div',{class:'eq',text:i.equip}),h('b',{text:i.title}),h('span',{class:'badge',text:(i.steps.length?i.steps.length+' шагов':'описание')+(i.photos&&i.photos.length?' · 📷 '+i.photos.length:'')})]))});
+  var r=items.filter(function(i){return (cat==='Все'||i.equip===cat)&&(!qq||i.search.indexOf(qq)>-1)});
+  if(!r.length){box.appendChild(h('div',{class:'empty',text:items.length?'Ничего не найдено':'Инструкций пока нет'}));return}
+  r.sort(function(a,b){return a.equip.localeCompare(b.equip,'ru')||a.title.localeCompare(b.title,'ru')});
+  r.forEach(function(i){box.appendChild(h('div',{class:'card',on:{click:function(){cur=i;show()}}},[h('div',{class:'eq',text:i.equip}),h('b',{text:i.title}),h('span',{class:'badge',text:i.steps?i.steps+' шагов':'описание'})]))});
 }
 function show(){
   app.innerHTML='';
@@ -89,42 +149,22 @@ function show(){
   app.appendChild(h('div',{class:'eq',text:cur.equip,style:'margin-top:14px'}));
   app.appendChild(h('h1',{text:cur.title}));
   if(cur.warn)app.appendChild(h('div',{class:'warn',text:'⚠️ '+cur.warn}));
-  if(cur.photos&&cur.photos.length){var ph=h('div',{class:'ph'});cur.photos.forEach(function(p){ph.appendChild(h('img',{src:p,on:{click:function(){big(p)}}}))});app.appendChild(ph)}
-  if(cur.desc)app.appendChild(h('div',{class:'desc',text:cur.desc}));
-  cur.steps.forEach(function(s,n){app.appendChild(h('div',{class:'step'},[h('div',{class:'num',text:String(n+1)}),h('div',{text:s})]))});
-  if(canEdit)app.appendChild(h('div',{class:'row'},[h('button',{class:'g',text:'Изменить',on:{click:function(){edit(cur)}}}),h('button',{class:'d',text:'Удалить',on:{click:async function(){if(!confirm('Удалить инструкцию?'))return;data.items=data.items.filter(function(x){return x!==cur});await persist()}}})]));
+  var b=h('div',{class:'body',html:cur.html});
+  b.querySelectorAll('img').forEach(function(im){im.addEventListener('click',function(){big(im.src)})});
+  app.appendChild(b);
+  window.scrollTo(0,0);
 }
-function edit(it){
+function help(){
   app.innerHTML='';
-  app.appendChild(h('h1',{text:it?'Изменить инструкцию':'Новая инструкция'}));
-  var dl=h('datalist',{id:'eqs'});cats().slice(1).forEach(function(c){dl.appendChild(h('option',{value:c}))});
-  var f1=h('input',{list:'eqs',placeholder:'Например: Принтер этикеток',value:it?it.equip:''});
-  var f2=h('input',{placeholder:'Например: Не печатает',value:it?it.title:''});
-  var f3=h('textarea',{placeholder:'Каждый шаг с новой строки'});f3.value=it?it.steps.join('\n'):'';
-  var f5=h('textarea',{placeholder:'Вставьте сюда любой текст: описание, причины, пояснения',style:'min-height:260px'});f5.value=it?it.desc||'':'';
-  var f4=h('input',{placeholder:'Необязательно: техника безопасности',value:it?it.warn||'':''});
-  [['Оборудование',f1],['Проблема',f2],['Описание (большой текст)',f5],['Шаги по пунктам (необязательно, каждый с новой строки)',f3],['Предупреждение',f4]].forEach(function(p){app.appendChild(h('label',{text:p[0]}));app.appendChild(p[1])});
-  app.appendChild(dl);
-  var photos=it&&it.photos?it.photos.slice():[];
-  var prev=h('div',{class:'ph'});
-  function rp(){prev.innerHTML='';photos.forEach(function(p,n){prev.appendChild(h('div',{class:'thumb'},[h('img',{src:p}),h('button',{class:'d',text:'✕',on:{click:function(){photos.splice(n,1);rp()}}})]))})}
-  rp();
-  var fi=h('input',{type:'file',accept:'image/*',multiple:'multiple'});
-  fi.addEventListener('change',async function(){for(var k=0;k<fi.files.length;k++){try{photos.push(await shrink(fi.files[k]))}catch(e){alert('Не удалось загрузить фото')}}fi.value='';rp()});
-  app.appendChild(h('label',{text:'Фото узла (можно несколько)'}));app.appendChild(prev);app.appendChild(fi);
-  app.appendChild(h('div',{class:'row'},[
-    h('button',{text:'Сохранить (скачать файл)',on:{click:async function(){
-      var steps=f3.value.split('\n').map(function(s){return s.trim()}).filter(Boolean);
-      if(!f1.value.trim()||!f2.value.trim()||(!steps.length&&!f5.value.trim())){alert('Заполните оборудование, проблему и описание или шаги');return}
-      var o={id:it?it.id:'i'+Date.now(),equip:f1.value.trim(),title:f2.value.trim(),warn:f4.value.trim(),desc:f5.value.trim(),steps:steps,photos:photos,upd:new Date().toISOString().slice(0,10)};
-      if(it)data.items[data.items.indexOf(it)]=o;else data.items.push(o);
-      await persist();
-    }}}),
-    h('button',{class:'g',text:'Отмена',on:{click:list}})]));
+  app.appendChild(h('button',{class:'g',text:'← К инструкциям',on:{click:function(){location.hash='';}}}));
+  app.appendChild(h('h1',{text:'Как добавить инструкцию',style:'margin-top:14px'}));
+  app.appendChild(h('div',{class:'help',html:'1. Напишите текст в Блокноте и сохраните как <code>название.md</code> (кодировка UTF-8).<br>2. Откройте <a target="_blank" rel="noopener" href="https://github.com/'+OWNER+'/'+REPO+'/upload/main/instructions">страницу загрузки</a>, перетащите файл (и фото), нажмите <b>Commit changes</b>.<br>3. Через 1–2 минуты инструкция появится здесь.'}));
+  app.appendChild(h('div',{class:'help'},[h('b',{text:'Как оформить текст'}),h('pre',{text:'# Название проблемы\nОборудование: Принтер этикеток\nВнимание: Выключите питание\n\nОписание обычным текстом.\n\n1. Первый шаг\n2. Второй шаг\n\n![](фото.jpg)'})]));
 }
-
-canEdit=location.hash==='#admin';list();
-window.addEventListener('hashchange',function(){canEdit=location.hash==='#admin';list()});
+function route(){if(location.hash==='#admin')help();else list()}
+window.addEventListener('hashchange',route);
+if(location.hash==='#admin')help();
+load();
 })();
 </script>
 </body>
