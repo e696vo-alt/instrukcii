@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Инструкции по оборудованию</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#667085;--ac:#1d6fe0;--acx:#fff;--bd:#e3e6eb;--wr:#fff4e0;--wrt:#8a5300;--rd:#d92d20;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1e2329;--tx:#eef0f3;--mut:#9aa4b2;--ac:#5b9bff;--acx:#0b1220;--bd:#2c333b;--wr:#3a2c10;--wrt:#ffcf7a;--rd:#ff6b5e}}
+:root[data-theme="dark"]{--bg:#14171b;--card:#1e2329;--tx:#eef0f3;--mut:#9aa4b2;--ac:#5b9bff;--acx:#0b1220;--bd:#2c333b;--wr:#3a2c10;--wrt:#ffcf7a;--rd:#ff6b5e}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:4px 0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+input,textarea,select{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);font:inherit}
+textarea{min-height:130px}
+label{display:block;margin:12px 0 4px;font-size:14px;color:var(--mut)}
+button{font:inherit;border:0;border-radius:10px;padding:12px 16px;background:var(--ac);color:var(--acx);cursor:pointer}
+button.g{background:var(--card);color:var(--tx);border:1px solid var(--bd)}
+button.d{background:var(--rd);color:#fff}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0}
+.chip{flex:none;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--bd);color:var(--tx)}
+.chip.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:10px 0;cursor:pointer}
+.card b{display:block;font-size:17px}
+.eq{color:var(--mut);font-size:14px}
+.step{display:flex;gap:12px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:8px 0}
+.num{flex:none;width:28px;height:28px;border-radius:50%;background:var(--ac);color:var(--acx);display:flex;align-items:center;justify-content:center;font-weight:700}
+.warn{background:var(--wr);color:var(--wrt);border-radius:12px;padding:12px;margin:10px 0}
+.row{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
+.empty{text-align:center;color:var(--mut);padding:30px 0}
+.badge{font-size:12px;color:var(--mut)}
+.ph{display:flex;gap:8px;overflow-x:auto;margin:10px 0}
+.ph img{height:160px;border-radius:10px;border:1px solid var(--bd);cursor:pointer;display:block}
+.thumb{position:relative;flex:none}
+.thumb button{position:absolute;top:4px;right:4px;padding:2px 9px;border-radius:999px}
+.big{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;z-index:50;padding:8px}
+.big img{max-width:100%;max-height:100%}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script id="data" type="application/json">{"items":[{"id":"s1","equip":"Принтер этикеток","title":"Не печатает этикетки","warn":"Перед вскрытием крышки выключите принтер.","steps":["Проверьте, что принтер включён и горит зелёный индикатор.","Откройте крышку и убедитесь, что рулон вставлен правильно.","Нажмите кнопку «Подача» — должна выйти одна этикетка.","Если не помогло — выключите принтер на 10 секунд и включите снова.","Всё ещё не печатает — позвоните старшему смены."],"upd":"2026-10-24"},{"id":"s2","equip":"Упаковочный станок","title":"Аварийная остановка (красный индикатор)","warn":"Не засовывайте руки в зону ножа.","steps":["Нажмите кнопку «Стоп» и дождитесь полной остановки.","Осмотрите зону подачи — уберите застрявшую плёнку.","Поверните аварийную кнопку по часовой стрелке для сброса.","Нажмите «Пуск» и проверьте первую упаковку."],"upd":"2026-10-24"}]}</script>
+<script>
+(function(){
+var data;try{data=JSON.parse(document.getElementById('data').textContent)}catch(e){data={items:[]}}
+var app=document.getElementById('app'),canEdit=false,art=null,q='',cat='Все',view='list',cur=null,saving=false;
+
+function h(tag,attrs,kids){var e=document.createElement(tag);for(var k in (attrs||{})){if(k==='on'){for(var ev in attrs.on)e.addEventListener(ev,attrs.on[ev])}else if(k==='text')e.textContent=attrs[k];else e.setAttribute(k,attrs[k])}(kids||[]).forEach(function(c){if(c)e.appendChild(c)});return e}
+function cats(){var s={};data.items.forEach(function(i){s[i.equip]=1});return ['Все'].concat(Object.keys(s).sort())}
+
+async function persist(){
+  var c=document.documentElement.cloneNode(true);
+  c.querySelector('#app').innerHTML='';
+  var o=c.querySelector('.big');if(o)o.remove();
+  c.querySelector('#data').textContent=JSON.stringify(data).replace(/</g,'\\u003c');
+  var html='<!DOCTYPE html>\n'+c.outerHTML;
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download='index.html';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href)},5000);
+  alert('Файл index.html скачан. Загрузите его на GitHub вместо старого — тогда операторы увидят изменения.');
+  list();return true;
+}
+function shrink(file){return new Promise(function(res,rej){var r=new FileReader();r.onerror=rej;r.onload=function(){var im=new Image();im.onerror=rej;im.onload=function(){var s=Math.min(1,1000/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.7))};im.src=r.result};r.readAsDataURL(file)})}
+function big(src){var o=h('div',{class:'big',on:{click:function(){o.remove()}}},[h('img',{src:src})]);document.body.appendChild(o)}
+function list(){
+  app.innerHTML='';
+  var t=h('h1',{},[h('span',{text:'🔧 Инструкции'})]);
+  if(canEdit)t.appendChild(h('button',{text:'+ Добавить',on:{click:function(){edit(null)}}}));
+  app.appendChild(t);
+  app.appendChild(h('input',{type:'search',placeholder:'Поиск: оборудование или проблема',value:q,on:{input:function(e){q=e.target.value;renderCards()}}}));
+  var chips=h('div',{class:'chips'});
+  cats().forEach(function(c){chips.appendChild(h('button',{class:'chip'+(c===cat?' on':''),text:c,on:{click:function(){cat=c;list()}}}))});
+  app.appendChild(chips);
+  app.appendChild(h('div',{id:'cards'}));
+  renderCards();
+}
+function renderCards(){
+  var box=document.getElementById('cards');box.innerHTML='';
+  var qq=q.trim().toLowerCase();
+  var r=data.items.filter(function(i){return (cat==='Все'||i.equip===cat)&&(!qq||(i.title+' '+i.equip+' '+i.steps.join(' ')).toLowerCase().indexOf(qq)>-1)});
+  if(!r.length){box.appendChild(h('div',{class:'empty',text:data.items.length?'Ничего не найдено':'Инструкций пока нет'}));return}
+  r.forEach(function(i){box.appendChild(h('div',{class:'card',on:{click:function(){cur=i;show()}}},[h('div',{class:'eq',text:i.equip}),h('b',{text:i.title}),h('span',{class:'badge',text:i.steps.length+' шагов'+(i.photos&&i.photos.length?' · 📷 '+i.photos.length:'')})]))});
+}
+function show(){
+  app.innerHTML='';
+  app.appendChild(h('button',{class:'g',text:'← Назад',on:{click:list}}));
+  app.appendChild(h('div',{class:'eq',text:cur.equip,style:'margin-top:14px'}));
+  app.appendChild(h('h1',{text:cur.title}));
+  if(cur.warn)app.appendChild(h('div',{class:'warn',text:'⚠️ '+cur.warn}));
+  if(cur.photos&&cur.photos.length){var ph=h('div',{class:'ph'});cur.photos.forEach(function(p){ph.appendChild(h('img',{src:p,on:{click:function(){big(p)}}}))});app.appendChild(ph)}
+  cur.steps.forEach(function(s,n){app.appendChild(h('div',{class:'step'},[h('div',{class:'num',text:String(n+1)}),h('div',{text:s})]))});
+  if(canEdit)app.appendChild(h('div',{class:'row'},[h('button',{class:'g',text:'Изменить',on:{click:function(){edit(cur)}}}),h('button',{class:'d',text:'Удалить',on:{click:async function(){if(!confirm('Удалить инструкцию?'))return;data.items=data.items.filter(function(x){return x!==cur});await persist()}}})]));
+}
+function edit(it){
+  app.innerHTML='';
+  app.appendChild(h('h1',{text:it?'Изменить инструкцию':'Новая инструкция'}));
+  var dl=h('datalist',{id:'eqs'});cats().slice(1).forEach(function(c){dl.appendChild(h('option',{value:c}))});
+  var f1=h('input',{list:'eqs',placeholder:'Например: Принтер этикеток',value:it?it.equip:''});
+  var f2=h('input',{placeholder:'Например: Не печатает',value:it?it.title:''});
+  var f3=h('textarea',{placeholder:'Каждый шаг с новой строки'});f3.value=it?it.steps.join('\n'):'';
+  var f4=h('input',{placeholder:'Необязательно: техника безопасности',value:it?it.warn||'':''});
+  [['Оборудование',f1],['Проблема',f2],['Шаги (каждый с новой строки)',f3],['Предупреждение',f4]].forEach(function(p){app.appendChild(h('label',{text:p[0]}));app.appendChild(p[1])});
+  app.appendChild(dl);
+  var photos=it&&it.photos?it.photos.slice():[];
+  var prev=h('div',{class:'ph'});
+  function rp(){prev.innerHTML='';photos.forEach(function(p,n){prev.appendChild(h('div',{class:'thumb'},[h('img',{src:p}),h('button',{class:'d',text:'✕',on:{click:function(){photos.splice(n,1);rp()}}})]))})}
+  rp();
+  var fi=h('input',{type:'file',accept:'image/*',multiple:'multiple'});
+  fi.addEventListener('change',async function(){for(var k=0;k<fi.files.length;k++){try{photos.push(await shrink(fi.files[k]))}catch(e){alert('Не удалось загрузить фото')}}fi.value='';rp()});
+  app.appendChild(h('label',{text:'Фото узла (можно несколько)'}));app.appendChild(prev);app.appendChild(fi);
+  app.appendChild(h('div',{class:'row'},[
+    h('button',{text:'Сохранить (скачать файл)',on:{click:async function(){
+      var steps=f3.value.split('\n').map(function(s){return s.trim()}).filter(Boolean);
+      if(!f1.value.trim()||!f2.value.trim()||!steps.length){alert('Заполните оборудование, проблему и хотя бы один шаг');return}
+      var o={id:it?it.id:'i'+Date.now(),equip:f1.value.trim(),title:f2.value.trim(),warn:f4.value.trim(),steps:steps,photos:photos,upd:new Date().toISOString().slice(0,10)};
+      if(it)data.items[data.items.indexOf(it)]=o;else data.items.push(o);
+      await persist();
+    }}}),
+    h('button',{class:'g',text:'Отмена',on:{click:list}})]));
+}
+
+canEdit=location.hash==='#admin';list();
+window.addEventListener('hashchange',function(){canEdit=location.hash==='#admin';list()});
+})();
+</script>
+</body>
+</html>
